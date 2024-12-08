@@ -9,18 +9,22 @@ const addCourse = asyncHandler(async (req, res) => {
   if (!Array.isArray(courses) || courses.length === 0) {
     throw new ApiError(400, "Please provide an array of courses.");
   }
+
   courses.forEach((course) => {
     if (
-      !course.title ||
-      !course.description ||
-      !course.category ||
-      !course.author ||
-      !course.price ||
-      !course.publishedDate
+      [
+        course.title,
+        course.description,
+        course.category,
+        course.author,
+        course.price,
+        course.publishedDate,
+      ].some((field) => !field || field.trim() === "")
     ) {
       throw new ApiError(400, "All fields are required for each course.");
     }
   });
+
   let courseCollection = await CourseCollection.findOne();
 
   if (!courseCollection) {
