@@ -4,24 +4,38 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { CourseCollection } from "../models/course.model.js";
 
 const addCourse = asyncHandler(async (req, res) => {
-  const courses = req.body;
+  const courses = req.body.courses;
 
   if (!Array.isArray(courses) || courses.length === 0) {
     throw new ApiError(400, "Please provide an array of courses.");
   }
 
-  courses.forEach((course) => {
+  courses.forEach((course, index) => {
     if (
-      [
-        course.title,
-        course.description,
-        course.category,
-        course.author,
-        course.price,
-        course.publishedDate,
-      ].some((field) => !field || field.trim() === "")
+      !course.title ||
+      !course.description ||
+      !course.category ||
+      !course.author ||
+      !course.price ||
+      !course.publishedDate
     ) {
-      throw new ApiError(400, "All fields are required for each course.");
+      throw new ApiError(
+        400,
+        `All fields are required for course at index ${index}.`
+      );
+    }
+    if (
+      !course.title.trim() ||
+      !course.description.trim() ||
+      !course.category.trim() ||
+      !course.author.trim() ||
+      !course.price ||
+      !course.publishedDate
+    ) {
+      throw new ApiError(
+        400,
+        `All fields must be non-empty for course at index ${index}.`
+      );
     }
   });
 
