@@ -2,73 +2,71 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { CourseCollection } from "../models/course.model.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const addCourse = asyncHandler(async (req, res) => {
-  const courses = req.body.courses;
+  const {
+    title,
+    description,
+    longDesescription,
+    category,
+    author,
+    price,
+    publishedDate,
+  } = req.body;
 
-  if (!Array.isArray(courses) || courses.length === 0) {
-    throw new ApiError(400, "Please provide an array of courses.");
+  // Check if all required fields are present
+  if (
+    [
+      title,
+      description,
+      longDesescription,
+      category,
+      author,
+      price,
+      publishedDate,
+    ].some((field) => field?.trim() === "")
+  ) {
+    throw new ApiError(400, "All fields are required");
   }
 
-  courses.forEach((course, index) => {
-    if (
-      !course.title ||
-      !course.description ||
-      !course.category ||
-      !course.author ||
-      !course.price ||
-      !course.publishedDate
-    ) {
-      throw new ApiError(
-        400,
-        `All fields are required for course at index ${index}.`
-      );
-    }
-    if (
-      !course.title.trim() ||
-      !course.description.trim() ||
-      !course.category.trim() ||
-      !course.author.trim() ||
-      !course.price ||
-      !course.publishedDate
-    ) {
-      throw new ApiError(
-        400,
-        `All fields must be non-empty for course at index ${index}.`
-      );
-    }
+  // Handle file upload for cover image
+  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "CoverImage file is required");
+  }
+
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+  // Create a new course instance
+  const course = new CourseCollection({
+    title,
+    description,
+    longDesescription,
+    category,
+    author,
+    price,
+    publishedDate,
+    coverImage: coverImage.url,
   });
 
-  let courseCollection = await CourseCollection.findOne();
-
-  if (!courseCollection) {
-    courseCollection = await CourseCollection.create({ courses });
-  } else {
-    courseCollection.courses.push(...courses);
-    await courseCollection.save();
-  }
+  // Save the course to the database
+  await course.save();
 
   return res
     .status(201)
-    .json(new ApiResponse(200, courseCollection, "Courses added successfully"));
+    .json(new ApiResponse(200, course, "Course added successfully"));
 });
 
 const getAllCourses = asyncHandler(async (req, res) => {
-  const courseCollection = await CourseCollection.findOne();
-
-  if (!courseCollection || !courseCollection.courses.length) {
+  const courses = await CourseCollection.find();
+  if (!courses || courses.length === 0) {
     return res.status(404).json(new ApiResponse(404, [], "No courses found."));
   }
 
   return res
     .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        courseCollection.courses,
-        "Courses fetched successfully"
-      )
-    );
+    .json(new ApiResponse(200, courses, "Courses fetched successfully"));
 });
 
 export { addCourse, getAllCourses };
