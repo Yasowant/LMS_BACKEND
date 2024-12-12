@@ -7,6 +7,8 @@ import {
   updateUserAvatar,
   refreshAccessToken,
   getCurrentUser,
+  getUserWithCart,
+  addToCart,
 } from "../controllers/user.controller.js";
 
 import { upload } from "../middlewares/multer.middleware.js";
@@ -32,4 +34,6 @@ router
   .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 router.route("/refresh-token").post(refreshAccessToken);
 router.route("/current-user").get(verifyJWT, getCurrentUser);
+router.route("/cart").get(verifyJWT, getUserWithCart);
+router.route("/add-to-cart").post(verifyJWT, addToCart);
 export default router;

@@ -36,6 +36,15 @@ const userSchema = new Schema(
     refreshToken: {
       type: String,
     },
+    cart: [
+      {
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CourseCollection",
+        },
+        quantity: { type: Number, default: 1 },
+      },
+    ],
   },
   {
     timestamps: true,

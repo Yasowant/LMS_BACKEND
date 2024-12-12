@@ -1,4 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { mongoose } from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
@@ -68,60 +69,44 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // req body -> data
-  // username or email
-  //find the user
-  //password check
-  //access and referesh token
-  //send cookie
+  const { username, password } = req.body;
 
-  const { email, username, password } = req.body;
-
-  if (!username && !email) {
-    throw new ApiError(400, "username or email is required");
-  }
-  const user = await User.findOne({
-    $or: [{ username }, { email }],
-  });
-
-  if (!user) {
-    throw new ApiError(404, "User does not exist");
+  // Check if username or password is missing
+  if (!username || !password) {
+    throw new ApiError(400, "Username and password are required");
   }
 
-  const isPasswordValid = await user.isPasswordCorrect(password);
+  const user = await User.findOne({ username: username.toLowerCase() });
 
-  if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user credentials");
+  if (!user || !(await user.isPasswordCorrect(password))) {
+    throw new ApiError(401, "Invalid username or password");
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
-    user._id
-  );
+  // Reset or initialize cart upon login
+  user.cart = [];
+  await user.save();
 
-  const loggedInUser = await User.findById(user._id).select(
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  const userData = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
-
-  return res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        {
-          user: loggedInUser,
-          accessToken,
-          refreshToken,
-        },
-        "User logged In Successfully"
-      )
-    );
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: userData,
+        accessToken,
+        refreshToken,
+      },
+      "Login successful"
+    )
+  );
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
@@ -248,6 +233,100 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, req.user, "User fetched successfully"));
 });
 
+const addToCart = asyncHandler(async (req, res) => {
+  const { productId, quantity } = req.body;
+
+  if (!productId || !quantity) {
+    throw new ApiError(400, "Product ID and quantity are required");
+  }
+
+  // Get the current user
+  const user = await User.findById(req.user._id);
+
+  // Check if the product already exists in the user's cart
+  const existingItemIndex = user.cart.findIndex(
+    (item) => item.productId.toString() === productId
+  );
+
+  if (existingItemIndex >= 0) {
+    // If product is already in the cart, update the quantity
+    user.cart[existingItemIndex].quantity += quantity;
+  } else {
+    // If product is not in the cart, add a new item
+    user.cart.push({ productId, quantity });
+  }
+
+  // Save the updated user document
+  await user.save();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user.cart, "Item added to cart"));
+});
+
+const getUserWithCart = asyncHandler(async (req, res) => {
+  const userId = req.user._id; // Assume the user ID is extracted from the token
+
+  const userWithCart = await User.aggregate([
+    {
+      $match: { _id: new mongoose.Types.ObjectId(userId) }, // Fix here by using 'new'
+    },
+    {
+      $lookup: {
+        from: "coursecollections", // Assuming this is the collection for courses
+        localField: "cart.productId",
+        foreignField: "_id",
+        as: "cartDetails",
+      },
+    },
+    {
+      $addFields: {
+        cart: {
+          $map: {
+            input: "$cart",
+            as: "cartItem",
+            in: {
+              productId: "$$cartItem.productId",
+              quantity: "$$cartItem.quantity",
+              course: {
+                $arrayElemAt: [
+                  {
+                    $filter: {
+                      input: "$cartDetails",
+                      as: "course",
+                      cond: {
+                        $eq: ["$$course._id", "$$cartItem.productId"],
+                      },
+                    },
+                  },
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        cartDetails: 0,
+        password: 0,
+        refreshToken: 0,
+      },
+    },
+  ]);
+
+  if (!userWithCart || userWithCart.length === 0) {
+    throw new ApiError(404, "User not found or no cart items");
+  }
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, userWithCart[0], "User cart fetched successfully")
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -256,4 +335,6 @@ export {
   updateUserAvatar,
   refreshAccessToken,
   getCurrentUser,
+  addToCart,
+  getUserWithCart,
 };
