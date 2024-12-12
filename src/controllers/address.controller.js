@@ -5,6 +5,7 @@ import { AddressCollection } from "../models/address.model.js";
 
 const addAddress = asyncHandler(async (req, res) => {
   const {
+    userId,
     fullName,
     mobileNumber,
     pinCode,
@@ -35,6 +36,7 @@ const addAddress = asyncHandler(async (req, res) => {
   }
 
   const address = new AddressCollection({
+    userId,
     fullName,
     mobileNumber,
     pinCode,
@@ -52,6 +54,21 @@ const addAddress = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, address, "Address added successfully"));
 });
 
+const getAddressesForUser = asyncHandler(async (req, res) => {
+  //find user through params
+  //then find address by user id
+
+  const { userId } = req.params;
+  const addresses = await AddressCollection.find({ userId });
+  if (!addresses.length) {
+    throw new ApiError(404, "No addresses found for this user");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, addresses, "Addresses retrieved successfully"));
+});
+
 const deleteAddress = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -66,4 +83,4 @@ const deleteAddress = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, "Address deleted successfully"));
 });
 
-export { addAddress, deleteAddress };
+export { addAddress, getAddressesForUser, deleteAddress };
