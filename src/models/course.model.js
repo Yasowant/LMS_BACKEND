@@ -14,7 +14,7 @@ const courseSchema = new Schema(
       type: String,
       required: true,
     },
-    longDesescription: {
+    longDescription: {
       type: String,
     },
     category: {
@@ -36,6 +36,12 @@ const courseSchema = new Schema(
     coverImage: {
       type: String,
       required: true,
+    },
+    rating: {
+      type: Number,
+      min: 0, // Minimum value is 0
+      max: 5, // Maximum value is 5 (assumes a 5-star rating system)
+      default: 0, // Default rating is 0 if not provided
     },
   },
 

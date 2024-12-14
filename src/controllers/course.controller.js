@@ -13,6 +13,7 @@ const addCourse = asyncHandler(async (req, res) => {
     author,
     price,
     publishedDate,
+    rating, // Add rating to the destructuring
   } = req.body;
 
   // Check if all required fields are present
@@ -38,6 +39,9 @@ const addCourse = asyncHandler(async (req, res) => {
 
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
+  // Set a default rating if not provided
+  const courseRating = rating >= 0 && rating <= 5 ? rating : 0; // Validate rating within 0-5 range
+
   // Create a new course instance
   const course = new CourseCollection({
     title,
@@ -48,6 +52,7 @@ const addCourse = asyncHandler(async (req, res) => {
     price,
     publishedDate,
     coverImage: coverImage.url,
+    rating: courseRating, // Add rating to the course object
   });
 
   // Save the course to the database
