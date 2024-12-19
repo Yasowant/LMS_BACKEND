@@ -26,7 +26,7 @@ jobs:
     - name: Deploy to Main Environment
       run: |
         echo "Deploying to Main Environment..."
-        if ! pm2 pid ddmain ; then pm2 start app.js --name ddmain ; else pm2 reload ddmain ; fi
+        if ! pm2 pid ddmain ; then pm2 start index.js --name ddmain ; else pm2 reload ddmain ; fi
       env:
         NODE_ENV: Production
  
