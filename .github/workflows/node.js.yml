@@ -42,4 +42,3 @@ jobs:
       run: pm2 delete all
       continue-on-error: true
 
-has context menu
