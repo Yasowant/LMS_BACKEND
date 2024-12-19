@@ -20,8 +20,15 @@ jobs:
         node-version: '14.x'
         cache: 'npm'
  
+    - name: Install Build Tools (for bcrypt)
+      run: |
+        sudo yum groupinstall -y "Development Tools"
+        sudo yum install -y gcc-c++ make
+ 
     - name: Install Node.js dependencies
-      run: npm ci
+      run: |
+        npm ci
+        npm install bcrypt@latest --save # or bcryptjs as an alternative
  
     - name: Deploy to Main Environment
       run: |
@@ -34,3 +41,5 @@ jobs:
       if: failure()
       run: pm2 delete all
       continue-on-error: true
+
+has context menu
