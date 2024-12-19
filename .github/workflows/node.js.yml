@@ -1,0 +1,36 @@
+name: CI/CD Pipeline
+ 
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+ 
+jobs:
+  deploy:
+    runs-on: self-hosted
+ 
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+ 
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14.x'
+        cache: 'npm'
+ 
+    - name: Install Node.js dependencies
+      run: npm ci
+ 
+    - name: Deploy to Main Environment
+      run: |
+        echo "Deploying to Main Environment..."
+        if ! pm2 pid ddmain ; then pm2 start index.js --name ddmain ; else pm2 reload ddmain ; fi
+      env:
+        NODE_ENV: Production
+ 
+    - name: Clean up PM2 process on failure
+      if: failure()
+      run: pm2 delete all
+      continue-on-error: true
